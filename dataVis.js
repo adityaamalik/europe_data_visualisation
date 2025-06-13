@@ -414,8 +414,9 @@ function renderRadarChart() {
     .domain(dataToShow.map((d, i) => i))
     .range(d3.schemeCategory10);
 
-  // Create radius scale
-  const r = d3.scaleLinear().domain([0, 1]).range([0, radius]);
+  // Create radius scale - use a smaller radius to keep lines in bounds
+  const maxRadius = radius * 0.7; // Use 70% of the full radius to ensure bounds
+  const r = d3.scaleLinear().domain([0, 1]).range([0, maxRadius]);
 
   // Remove existing polylines
   radar.selectAll(".polyline").remove();
@@ -434,8 +435,15 @@ function renderRadarChart() {
     .attr("class", "polyline")
     .attr("d", (d) => {
       const points = dimensions.map((dim, i) => {
-        const value = axisScales[dim](+d[dim]);
-        return [radarX(r(value), i), radarY(r(value), i)];
+        // Ensure the value is properly normalized and clamped
+        let value = +d[dim];
+        if (isNaN(value)) value = 0; // Handle non-numeric values
+
+        const normalizedValue = axisScales[dim](value);
+        // Clamp the value between 0 and 1 to ensure it stays in bounds
+        const clampedValue = Math.max(0, Math.min(1, normalizedValue));
+
+        return [radarX(r(clampedValue), i), radarY(r(clampedValue), i)];
       });
       return d3
         .line()
@@ -460,8 +468,28 @@ function renderRadarChart() {
     )
     .enter()
     .append("circle")
-    .attr("cx", (d) => radarX(r(axisScales[d.dim](d.value)), d.index))
-    .attr("cy", (d) => radarY(r(axisScales[d.dim](d.value)), d.index))
+    .attr("cx", (d) => {
+      // Ensure the value is properly normalized and clamped
+      let value = d.value;
+      if (isNaN(value)) value = 0; // Handle non-numeric values
+
+      const normalizedValue = axisScales[d.dim](value);
+      // Clamp the value between 0 and 1 to ensure it stays in bounds
+      const clampedValue = Math.max(0, Math.min(1, normalizedValue));
+
+      return radarX(r(clampedValue), d.index);
+    })
+    .attr("cy", (d) => {
+      // Ensure the value is properly normalized and clamped
+      let value = d.value;
+      if (isNaN(value)) value = 0; // Handle non-numeric values
+
+      const normalizedValue = axisScales[d.dim](value);
+      // Clamp the value between 0 and 1 to ensure it stays in bounds
+      const clampedValue = Math.max(0, Math.min(1, normalizedValue));
+
+      return radarY(r(clampedValue), d.index);
+    })
     .attr("r", 3)
     .style("fill", (d, i, nodes) => {
       // Get the color for this data point
