@@ -34,8 +34,27 @@ let margin, width, height, radius;
 let scatter, radar, dataTable;
 
 // Add additional variables
+let globalData = null;
 
 function init() {
+  // Tooltip for scatterplot (create once, after body is loaded)
+  let scatterTooltip = document.getElementById("scatterTooltip");
+  if (!scatterTooltip) {
+    scatterTooltip = document.createElement("div");
+    scatterTooltip.id = "scatterTooltip";
+    scatterTooltip.style.position = "fixed";
+    scatterTooltip.style.background = "rgba(255,255,255,0.97)";
+    scatterTooltip.style.border = "1px solid #333";
+    scatterTooltip.style.padding = "8px";
+    scatterTooltip.style.borderRadius = "4px";
+    scatterTooltip.style.pointerEvents = "none";
+    scatterTooltip.style.font = "13px sans-serif";
+    scatterTooltip.style.zIndex = 10000;
+    scatterTooltip.style.display = "none";
+    document.body.appendChild(scatterTooltip);
+  }
+  window.scatterTooltip = scatterTooltip;
+
   // define size of plots
   margin = { top: 20, right: 20, bottom: 20, left: 50 };
   width = 600;
@@ -77,13 +96,13 @@ function init() {
         console.log(reader.result);
 
         // Parse the CSV data
-        const parsedData = d3.csvParse(reader.result);
+        globalData = d3.csvParse(reader.result);
 
         // Call init functions with the parsed data
-        initVis(parsedData);
-        CreateDataTable(parsedData);
+        initVis(globalData);
+        CreateDataTable(globalData);
         // TODO: possible place to call the dashboard file for Part 2
-        initDashboard(parsedData);
+        initDashboard(globalData);
       };
       reader.readAsBinaryString(fileInput.files[0]);
     };
@@ -91,22 +110,25 @@ function init() {
 }
 
 function initVis(_data) {
-  // TODO: parse dimensions (i.e., attributes) from input file
+  if (!_data || !_data.length) return;
 
-  // y scalings for scatterplot
-  // TODO: set y domain for each dimension
+  // Parse dimensions (attributes) from input file
+  dimensions = _data.columns;
+  // Remove the first dimension if it's a label
+  if (dimensions.length > 0) {
+    dimensions.splice(0, 1);
+  }
+
+  // Set up scales for scatterplot
   let y = d3
     .scaleLinear()
     .range([height - margin.bottom - margin.top, margin.top]);
 
-  // x scalings for scatter plot
-  // TODO: set x domain for each dimension
   let x = d3
     .scaleLinear()
     .range([margin.left, width - margin.left - margin.right]);
 
-  // radius scalings for radar chart
-  // TODO: set radius domain for each dimension
+  // Set up scale for radar chart
   let r = d3.scaleLinear().range([0, radius]);
 
   // scatterplot axes
@@ -120,7 +142,7 @@ function initVis(_data) {
     .append("text")
     .style("text-anchor", "middle")
     .attr("y", margin.top / 2)
-    .text("x");
+    .text("y-axis");
 
   xAxis = scatter
     .append("g")
@@ -135,7 +157,7 @@ function initVis(_data) {
     .append("text")
     .style("text-anchor", "middle")
     .attr("x", width - margin.right)
-    .text("y");
+    .text("x-axis");
 
   // radar chart axes
   radarAxesAngle = (Math.PI * 2) / dimensions.length;
@@ -165,9 +187,26 @@ function initVis(_data) {
     .attr("class", "line")
     .style("stroke", "black");
 
-  // TODO: render grid lines in gray
+  // Add grid lines
+  for (let i = 0.2; i <= 0.8; i += 0.2) {
+    radar
+      .append("path")
+      .datum(dimensions)
+      .attr("class", "grid")
+      .attr(
+        "d",
+        d3
+          .line()
+          .x((d, j) => radarX(axisRadius(i), j))
+          .y((d, j) => radarY(axisRadius(i), j))
+          .curve(d3.curveLinearClosed)
+      )
+      .style("fill", "none")
+      .style("stroke", "gray")
+      .style("stroke-width", "0.5");
+  }
 
-  // TODO: render correct axes labels
+  // Add axis labels
   radar
     .selectAll(".axisLabel")
     .data(dimensions)
@@ -181,14 +220,14 @@ function initVis(_data) {
     .attr("y", function (d, i) {
       return radarY(axisRadius(textRadius), i);
     })
-    .text("dimension");
+    .text((d) => d);
 
-  // init menu for the visual channels
+  // Initialize menus for visual channels
   channels.forEach(function (c) {
     initMenu(c, dimensions);
   });
 
-  // refresh all select menus
+  // Refresh all select menus
   channels.forEach(function (c) {
     refreshMenu(c);
   });
@@ -241,14 +280,138 @@ function CreateDataTable(_data) {
 }
 
 function renderScatterplot() {
-  // TODO: get domain names from menu and label x- and y-axis
-  // TODO: re-render axes
-  // TODO: render dots
+  if (!globalData || !globalData.length) return;
+
+  // Get selected dimensions from menus
+  const xDim = readMenu("scatterX");
+  const yDim = readMenu("scatterY");
+  const sizeDim = readMenu("size");
+
+  // Update axis labels
+  xAxisLabel.text(xDim);
+  yAxisLabel.text(yDim);
+
+  // Create scales
+  const x = d3
+    .scaleLinear()
+    .domain(d3.extent(globalData, (d) => +d[xDim]))
+    .range([margin.left, width - margin.left - margin.right]);
+
+  const y = d3
+    .scaleLinear()
+    .domain(d3.extent(globalData, (d) => +d[yDim]))
+    .range([height - margin.bottom - margin.top, margin.top]);
+
+  const size = d3
+    .scaleLinear()
+    .domain(d3.extent(globalData, (d) => +d[sizeDim]))
+    .range([3, 10]);
+
+  // Update axes
+  xAxis.transition().duration(500).call(d3.axisBottom(x));
+  yAxis.transition().duration(500).call(d3.axisLeft(y));
+
+  // Remove existing dots
+  scatter.selectAll("circle").remove();
+
+  // Add new dots
+  scatter
+    .selectAll("circle")
+    .data(globalData)
+    .enter()
+    .append("circle")
+    .attr("cx", (d) => x(+d[xDim]))
+    .attr("cy", (d) => y(+d[yDim]))
+    .attr("r", (d) => size(+d[sizeDim]))
+    .style("fill", "steelblue")
+    .style("opacity", 0.7)
+    .on("mouseover", function (event, d) {
+      d3.select(this).style("fill", "orange").style("opacity", 1);
+      // Show tooltip with all details
+      let html = "<b>Details:</b><br>";
+      Object.entries(d).forEach(([key, value]) => {
+        html += `<b>${key}:</b> ${value}<br>`;
+      });
+      scatterTooltip.innerHTML = html;
+      scatterTooltip.style.display = "block";
+    })
+    .on("mousemove", function (event) {
+      // Use event.clientX/Y for fixed positioning
+      scatterTooltip.style.left = event.clientX + 20 + "px";
+      scatterTooltip.style.top = event.clientY + 10 + "px";
+    })
+    .on("mouseout", function (event, d) {
+      d3.select(this).style("fill", "steelblue").style("opacity", 0.7);
+      scatterTooltip.style.display = "none";
+    });
 }
 
 function renderRadarChart() {
-  // TODO: show selected items in legend
-  // TODO: render polylines in a unique color
+  if (!globalData || !globalData.length) return;
+
+  // Limit the number of items to show (e.g., first 10)
+  const maxItems = 10;
+  const dataToShow = globalData.slice(0, maxItems);
+
+  // Compute min/max for each dimension for normalization
+  const axisScales = {};
+  dimensions.forEach((dim) => {
+    axisScales[dim] = d3
+      .scaleLinear()
+      .domain(d3.extent(globalData, (d) => +d[dim]))
+      .range([0, 1]);
+  });
+
+  // Create color scale
+  const color = d3
+    .scaleOrdinal()
+    .domain(dataToShow.map((d, i) => i))
+    .range(d3.schemeCategory10);
+
+  // Create radius scale
+  const r = d3.scaleLinear().domain([0, 1]).range([0, radius]);
+
+  // Remove existing polylines
+  radar.selectAll(".polyline").remove();
+  radar.selectAll(".legend-item").remove();
+
+  // Add polylines for each data point (normalized)
+  radar
+    .selectAll(".polyline")
+    .data(dataToShow)
+    .enter()
+    .append("path")
+    .attr("class", "polyline")
+    .attr("d", (d) => {
+      const points = dimensions.map((dim, i) => {
+        const value = axisScales[dim](+d[dim]);
+        return [radarX(r(value), i), radarY(r(value), i)];
+      });
+      return d3
+        .line()
+        .x((d) => d[0])
+        .y((d) => d[1])
+        .curve(d3.curveLinearClosed)(points);
+    })
+    .style("fill", (d, i) => color(i))
+    .style("fill-opacity", 0.2)
+    .style("stroke", (d, i) => color(i))
+    .style("stroke-width", 2);
+
+  // Update legend (use first column as label if available)
+  const legend = d3.select("#legend");
+  const labelKey = globalData.columns[0];
+  legend
+    .selectAll(".legend-item")
+    .data(dataToShow)
+    .enter()
+    .append("div")
+    .attr("class", "legend-item")
+    .style("margin", "5px")
+    .html((d, i) => {
+      const label = d[labelKey] || `Item ${i + 1}`;
+      return `<span style=\"color:${color(i)}\">■</span> ${label}`;
+    });
 }
 
 function radarX(radius, index) {
@@ -271,9 +434,30 @@ function initMenu(id, entries) {
     $("select#" + id).append("<option>" + d + "</option>");
   });
 
+  // Set default selections based on the menu type
+  if (entries.length > 0) {
+    if (id === "scatterX") {
+      // Select first dimension for x-axis
+      $("#" + id).val(entries[0]);
+    } else if (id === "scatterY") {
+      // Select second dimension for y-axis if available, otherwise first
+      $("#" + id).val(entries.length > 1 ? entries[1] : entries[0]);
+    } else if (id === "size") {
+      // Select third dimension for size if available, otherwise second or first
+      $("#" + id).val(
+        entries.length > 2
+          ? entries[2]
+          : entries.length > 1
+          ? entries[1]
+          : entries[0]
+      );
+    }
+  }
+
   $("#" + id).selectmenu({
     select: function () {
       renderScatterplot();
+      renderRadarChart();
     },
   });
 }
