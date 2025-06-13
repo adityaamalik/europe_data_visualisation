@@ -37,6 +37,7 @@ let scatter, radar, dataTable;
 let globalData = null;
 let selectedPoints = []; // Array to store selected points
 let selectedPointIds = new Set(); // Set to track selected point IDs
+let firstColumnName = null; // Store the original first column name
 
 function init() {
   // Tooltip for scatterplot (create once, after body is loaded)
@@ -116,6 +117,8 @@ function initVis(_data) {
 
   // Parse dimensions (attributes) from input file
   dimensions = _data.columns;
+  // Store the first column name before removing it
+  firstColumnName = dimensions[0];
   // Remove the first dimension if it's a label
   if (dimensions.length > 0) {
     dimensions.splice(0, 1);
@@ -246,6 +249,7 @@ function clear() {
   dataTable.selectAll("*").remove();
   selectedPoints = []; // Clear selected points
   selectedPointIds.clear(); // Clear selected point IDs
+  firstColumnName = null; // Reset first column name
 }
 
 //Create Table
@@ -328,8 +332,19 @@ function renderScatterplot() {
     .attr("cx", (d) => x(+d[xDim]))
     .attr("cy", (d) => y(+d[yDim]))
     .attr("r", (d) => size(+d[sizeDim]))
-    .style("fill", "steelblue")
-    .style("opacity", 0.7)
+    .style("fill", (d, i) => {
+      // Check if this point is selected and use appropriate color
+      if (selectedPointIds.has(i)) {
+        const color = d3
+          .scaleOrdinal()
+          .domain(selectedPoints.map((d, i) => i))
+          .range(d3.schemeCategory10);
+        const selectedIndex = selectedPoints.findIndex((item) => item === d);
+        return color(selectedIndex);
+      }
+      return "steelblue";
+    })
+    .style("opacity", (d, i) => (selectedPointIds.has(i) ? 1 : 0.7))
     .attr("data-index", (d, i) => i) // Add index for identification
     .on("mouseover", function (event, d) {
       d3.select(this).style("fill", "orange").style("opacity", 1);
@@ -351,6 +366,14 @@ function renderScatterplot() {
       const index = d3.select(this).attr("data-index");
       if (!selectedPointIds.has(parseInt(index))) {
         d3.select(this).style("fill", "steelblue").style("opacity", 0.7);
+      } else {
+        // Reset to selected color
+        const color = d3
+          .scaleOrdinal()
+          .domain(selectedPoints.map((d, i) => i))
+          .range(d3.schemeCategory10);
+        const selectedIndex = selectedPoints.findIndex((item) => item === d);
+        d3.select(this).style("fill", color(selectedIndex)).style("opacity", 1);
       }
       scatterTooltip.style.display = "none";
     })
@@ -369,6 +392,7 @@ function renderRadarChart() {
   // If no points are selected, clear the radar chart
   if (dataToShow.length === 0) {
     radar.selectAll(".polyline").remove();
+    radar.selectAll(".radar-dots").remove();
     // Clear only legend items, preserve the title
     const legend = d3.select("#legend");
     legend.selectAll(".legend-item").remove();
@@ -395,6 +419,7 @@ function renderRadarChart() {
 
   // Remove existing polylines
   radar.selectAll(".polyline").remove();
+  radar.selectAll(".radar-dots").remove();
 
   // Clear legend items - do this before creating new ones
   const legend = d3.select("#legend");
@@ -418,13 +443,43 @@ function renderRadarChart() {
         .y((d) => d[1])
         .curve(d3.curveLinearClosed)(points);
     })
-    .style("fill", (d, i) => color(i))
-    .style("fill-opacity", 0.2)
+    .style("fill", "none") // Remove fill
     .style("stroke", (d, i) => color(i))
-    .style("stroke-width", 2);
+    .style("stroke-width", 4); // Make lines bolder
+
+  // Add dots on each axis for each data point
+  radar
+    .selectAll(".radar-dots")
+    .data(dataToShow)
+    .enter()
+    .append("g")
+    .attr("class", "radar-dots")
+    .selectAll("circle")
+    .data((d) =>
+      dimensions.map((dim, i) => ({ dim, value: +d[dim], index: i }))
+    )
+    .enter()
+    .append("circle")
+    .attr("cx", (d) => radarX(r(axisScales[d.dim](d.value)), d.index))
+    .attr("cy", (d) => radarY(r(axisScales[d.dim](d.value)), d.index))
+    .attr("r", 3)
+    .style("fill", (d, i, nodes) => {
+      // Get the color for this data point
+      const dataIndex = d3.select(nodes[i].parentNode).datum();
+      const colorIndex = dataToShow.indexOf(dataIndex);
+      return color(colorIndex);
+    })
+    .style("stroke", "white")
+    .style("stroke-width", 1);
 
   // Update legend (use first column as label if available)
-  const labelKey = globalData.columns[0];
+  const labelKey = firstColumnName;
+
+  // Debug: log the columns and labelKey
+  console.log("Global data columns:", globalData.columns);
+  console.log("First column name:", firstColumnName);
+  console.log("Label key:", labelKey);
+  console.log("Sample data point:", dataToShow[0]);
 
   legend
     .selectAll(".legend-item")
@@ -438,9 +493,12 @@ function renderRadarChart() {
     .style("cursor", "pointer")
     .html((d, i) => {
       const label = d[labelKey] || `Item ${i + 1}`;
+      console.log(
+        `Legend item ${i}: labelKey="${labelKey}", value="${d[labelKey]}", final label="${label}"`
+      );
       return `<span style=\"color:${color(i)}; margin-right: 5px;\">■</span> 
               <span style=\"flex-grow: 1;\">${label}</span>
-              <span class=\"remove-point\" style=\"color: red; font-weight: bold; margin-left: 5px; cursor: pointer;\">✕</span>`;
+              <span class=\"remove-point\" style=\"color: red; font-weight: bold; font-size: 16px; margin-left: 5px; cursor: pointer; text-shadow: 1px 1px 1px white, -1px -1px 1px white, 1px -1px 1px white, -1px 1px 1px white;\">✕</span>`;
     })
     .on("click", function (event, d) {
       // Only trigger if clicking on the cross icon
@@ -452,7 +510,7 @@ function renderRadarChart() {
           selectedPointIds.delete(originalIndex);
           selectedPoints = selectedPoints.filter((item) => item !== d);
 
-          // Update scatterplot point color
+          // Update scatterplot point color back to default
           const scatterPoint = scatter
             .selectAll("circle")
             .filter((item, index) => index === originalIndex);
@@ -492,7 +550,14 @@ function togglePointSelection(index, data, element) {
     // Select the point
     selectedPointIds.add(index);
     selectedPoints.push(data);
-    d3.select(element).style("fill", "red").style("opacity", 1);
+
+    // Use the same color as the radar chart
+    const color = d3
+      .scaleOrdinal()
+      .domain(selectedPoints.map((d, i) => i))
+      .range(d3.schemeCategory10);
+    const colorIndex = selectedPoints.length - 1; // Index of the newly added point
+    d3.select(element).style("fill", color(colorIndex)).style("opacity", 1);
   }
 
   // Update radar chart with selected points
