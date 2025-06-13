@@ -35,6 +35,8 @@ let scatter, radar, dataTable;
 
 // Add additional variables
 let globalData = null;
+let selectedPoints = []; // Array to store selected points
+let selectedPointIds = new Set(); // Set to track selected point IDs
 
 function init() {
   // Tooltip for scatterplot (create once, after body is loaded)
@@ -233,7 +235,8 @@ function initVis(_data) {
   });
 
   renderScatterplot();
-  renderRadarChart();
+  // Don't render radar chart initially - it should be empty
+  // renderRadarChart();
 }
 
 // clear visualizations before loading a new file
@@ -241,6 +244,8 @@ function clear() {
   scatter.selectAll("*").remove();
   radar.selectAll("*").remove();
   dataTable.selectAll("*").remove();
+  selectedPoints = []; // Clear selected points
+  selectedPointIds.clear(); // Clear selected point IDs
 }
 
 //Create Table
@@ -325,6 +330,7 @@ function renderScatterplot() {
     .attr("r", (d) => size(+d[sizeDim]))
     .style("fill", "steelblue")
     .style("opacity", 0.7)
+    .attr("data-index", (d, i) => i) // Add index for identification
     .on("mouseover", function (event, d) {
       d3.select(this).style("fill", "orange").style("opacity", 1);
       // Show tooltip with all details
@@ -341,17 +347,33 @@ function renderScatterplot() {
       scatterTooltip.style.top = event.clientY + 10 + "px";
     })
     .on("mouseout", function (event, d) {
-      d3.select(this).style("fill", "steelblue").style("opacity", 0.7);
+      // Only reset color if not selected
+      const index = d3.select(this).attr("data-index");
+      if (!selectedPointIds.has(parseInt(index))) {
+        d3.select(this).style("fill", "steelblue").style("opacity", 0.7);
+      }
       scatterTooltip.style.display = "none";
+    })
+    .on("click", function (event, d) {
+      const index = parseInt(d3.select(this).attr("data-index"));
+      togglePointSelection(index, d, this);
     });
 }
 
 function renderRadarChart() {
   if (!globalData || !globalData.length) return;
 
-  // Limit the number of items to show (e.g., first 10)
-  const maxItems = 10;
-  const dataToShow = globalData.slice(0, maxItems);
+  // Only show selected points
+  const dataToShow = selectedPoints;
+
+  // If no points are selected, clear the radar chart
+  if (dataToShow.length === 0) {
+    radar.selectAll(".polyline").remove();
+    // Clear only legend items, preserve the title
+    const legend = d3.select("#legend");
+    legend.selectAll(".legend-item").remove();
+    return;
+  }
 
   // Compute min/max for each dimension for normalization
   const axisScales = {};
@@ -362,7 +384,7 @@ function renderRadarChart() {
       .range([0, 1]);
   });
 
-  // Create color scale
+  // Create color scale for selected points
   const color = d3
     .scaleOrdinal()
     .domain(dataToShow.map((d, i) => i))
@@ -373,9 +395,12 @@ function renderRadarChart() {
 
   // Remove existing polylines
   radar.selectAll(".polyline").remove();
-  radar.selectAll(".legend-item").remove();
 
-  // Add polylines for each data point (normalized)
+  // Clear legend items - do this before creating new ones
+  const legend = d3.select("#legend");
+  legend.selectAll(".legend-item").remove(); // Remove only legend items, preserve title
+
+  // Add polylines for each selected data point (normalized)
   radar
     .selectAll(".polyline")
     .data(dataToShow)
@@ -399,8 +424,8 @@ function renderRadarChart() {
     .style("stroke-width", 2);
 
   // Update legend (use first column as label if available)
-  const legend = d3.select("#legend");
   const labelKey = globalData.columns[0];
+
   legend
     .selectAll(".legend-item")
     .data(dataToShow)
@@ -408,9 +433,35 @@ function renderRadarChart() {
     .append("div")
     .attr("class", "legend-item")
     .style("margin", "5px")
+    .style("display", "flex")
+    .style("align-items", "center")
+    .style("cursor", "pointer")
     .html((d, i) => {
       const label = d[labelKey] || `Item ${i + 1}`;
-      return `<span style=\"color:${color(i)}\">■</span> ${label}`;
+      return `<span style=\"color:${color(i)}; margin-right: 5px;\">■</span> 
+              <span style=\"flex-grow: 1;\">${label}</span>
+              <span class=\"remove-point\" style=\"color: red; font-weight: bold; margin-left: 5px; cursor: pointer;\">✕</span>`;
+    })
+    .on("click", function (event, d) {
+      // Only trigger if clicking on the cross icon
+      if (event.target.classList.contains("remove-point")) {
+        // Find the index of this data point in the original data
+        const originalIndex = globalData.findIndex((item) => item === d);
+        if (originalIndex !== -1) {
+          // Remove from selection
+          selectedPointIds.delete(originalIndex);
+          selectedPoints = selectedPoints.filter((item) => item !== d);
+
+          // Update scatterplot point color
+          const scatterPoint = scatter
+            .selectAll("circle")
+            .filter((item, index) => index === originalIndex);
+          scatterPoint.style("fill", "steelblue").style("opacity", 0.7);
+
+          // Re-render radar chart
+          renderRadarChart();
+        }
+      }
     });
 }
 
@@ -424,6 +475,28 @@ function radarY(radius, index) {
 
 function radarAngle(index) {
   return radarAxesAngle * index - Math.PI / 2;
+}
+
+// Function to toggle point selection
+function togglePointSelection(index, data, element) {
+  if (selectedPointIds.has(index)) {
+    // Deselect the point
+    selectedPointIds.delete(index);
+    selectedPoints = selectedPoints.filter((d, i) => {
+      // Find the index of this data point in the original data
+      const originalIndex = globalData.findIndex((item) => item === d);
+      return originalIndex !== index;
+    });
+    d3.select(element).style("fill", "steelblue").style("opacity", 0.7);
+  } else {
+    // Select the point
+    selectedPointIds.add(index);
+    selectedPoints.push(data);
+    d3.select(element).style("fill", "red").style("opacity", 1);
+  }
+
+  // Update radar chart with selected points
+  renderRadarChart();
 }
 
 // init scatterplot select menu
@@ -457,7 +530,8 @@ function initMenu(id, entries) {
   $("#" + id).selectmenu({
     select: function () {
       renderScatterplot();
-      renderRadarChart();
+      // Don't automatically render radar chart - only show selected points
+      // renderRadarChart();
     },
   });
 }
