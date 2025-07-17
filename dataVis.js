@@ -39,6 +39,13 @@ let selectedPoints = []; // Array to store selected points
 let selectedPointIds = new Set(); // Set to track selected point IDs
 let firstColumnName = null; // Store the original first column name
 
+// Track current selections for scatterX, scatterY, and size
+let currentSelections = {
+  scatterX: null,
+  scatterY: null,
+  size: null,
+};
+
 function init() {
   // Tooltip for scatterplot (create once, after body is loaded)
   let scatterTooltip = document.getElementById("scatterTooltip");
@@ -74,16 +81,18 @@ function init() {
   scatter = d3
     .select("#sp")
     .append("svg")
-    .attr("width", width)
-    .attr("height", height)
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .classed("responsive-svg", true)
     .append("g");
 
   // radar chart SVG container and axes
   radar = d3
     .select("#radar")
     .append("svg")
-    .attr("width", width)
-    .attr("height", height)
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .classed("responsive-svg", true)
     .append("g")
     .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
@@ -97,6 +106,8 @@ function init() {
       reader.onloadend = function () {
         // Parse the CSV data
         globalData = d3.csvParse(reader.result);
+
+        console.log(globalData);
 
         // Call init functions with the parsed data
         initVis(globalData);
@@ -126,13 +137,9 @@ function initVis(_data) {
   if (!_data || !_data.length) return;
 
   // Parse dimensions (attributes) from input file
-  dimensions = _data.columns;
-  // Store the first column name before removing it
-  firstColumnName = dimensions[0];
-  // Remove the first dimension if it's a label
-  if (dimensions.length > 0) {
-    dimensions.splice(0, 1);
-  }
+  const allColumns = _data.columns;
+  firstColumnName = allColumns[0];
+  dimensions = allColumns.slice(1); // for charts only
 
   // Set up scales for scatterplot
   let y = d3
@@ -242,10 +249,22 @@ function initVis(_data) {
     initMenu(c, dimensions);
   });
 
-  // Refresh all select menus
-  channels.forEach(function (c) {
-    refreshMenu(c);
-  });
+  // Set sensible defaults for selections
+  if (dimensions.length > 0) {
+    currentSelections.scatterX = dimensions[0];
+    currentSelections.scatterY =
+      dimensions.length > 1 ? dimensions[1] : dimensions[0];
+    currentSelections.size =
+      dimensions.length > 2
+        ? dimensions[2]
+        : dimensions.length > 1
+        ? dimensions[1]
+        : dimensions[0];
+  }
+  // Update button text for each menu
+  updateMenuButtonText("scatterX");
+  updateMenuButtonText("scatterY");
+  updateMenuButtonText("size");
 
   renderScatterplot();
   // Don't render radar chart initially - it should be empty
@@ -264,6 +283,8 @@ function clear() {
 
 //Create Table
 function CreateDataTable(_data) {
+  console.log("Parsed columns:", _data.columns);
+
   if (!_data || !_data.length) return;
 
   // Remove any existing table wrapper
@@ -600,51 +621,46 @@ function togglePointSelection(index, data, element) {
   renderRadarChart();
 }
 
-// init scatterplot select menu
+// init scatterplot select menu for custom HTML structure
 function initMenu(id, entries) {
-  $("select#" + id).empty();
+  // Find the menu UL and button
+  const menuId = id + "Menu";
+  const buttonId = id + "Button";
+  const menu = document.getElementById(menuId);
+  const button = document.getElementById(buttonId);
+  if (!menu || !button) return;
 
-  entries.forEach(function (d) {
-    $("select#" + id).append("<option>" + d + "</option>");
-  });
+  // Clear previous menu items
+  menu.innerHTML = "";
 
-  // Set default selections based on the menu type
-  if (entries.length > 0) {
-    if (id === "scatterX") {
-      // Select first dimension for x-axis
-      $("#" + id).val(entries[0]);
-    } else if (id === "scatterY") {
-      // Select second dimension for y-axis if available, otherwise first
-      $("#" + id).val(entries.length > 1 ? entries[1] : entries[0]);
-    } else if (id === "size") {
-      // Select third dimension for size if available, otherwise second or first
-      $("#" + id).val(
-        entries.length > 2
-          ? entries[2]
-          : entries.length > 1
-          ? entries[1]
-          : entries[0]
-      );
-    }
-  }
-
-  $("#" + id).selectmenu({
-    select: function () {
+  // Add menu items
+  entries.forEach((d) => {
+    const li = document.createElement("li");
+    li.className = "uk-nav-item";
+    li.textContent = d;
+    li.style.cursor = "pointer";
+    li.onclick = function () {
+      currentSelections[id] = d;
+      updateMenuButtonText(id);
       renderScatterplot();
-      // Don't automatically render radar chart - only show selected points
-      // renderRadarChart();
-    },
+    };
+    menu.appendChild(li);
   });
 }
 
-// refresh menu after reloading data
-function refreshMenu(id) {
-  $("#" + id).selectmenu("refresh");
+// Update the button text to reflect the current selection
+function updateMenuButtonText(id) {
+  const button = document.getElementById(id + "Button");
+  if (button) {
+    button.textContent = currentSelections[id]
+      ? currentSelections[id]
+      : "Select " + id.charAt(0).toUpperCase() + id.slice(1);
+  }
 }
 
 // read current scatterplot parameters
 function readMenu(id) {
-  return $("#" + id).val();
+  return currentSelections[id];
 }
 
 // switches and displays the tabs

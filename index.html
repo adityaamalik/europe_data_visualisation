@@ -123,37 +123,118 @@
       </div>
 
       <!-- Tab 2 -->
-      <div id="BasicVisualization" class="tabcontent">
-        <!-- scatterplot -->
-        <div class="container">
-          <!-- scatterplot menu -->
-          <h2>Scatterplot</h2>
-
-          <p>Select dimensions to be displayed here:</p>
-          <div id="menu">
-            <form action="#">
-              <fieldset>
-                <label for="scatterX">x axis: </label>
-                <select name="scatterX" id="scatterX"></select>
-                <br />
-                <label for="scatterY">y axis: </label>
-                <select name="scatterY" id="scatterY"></select>
-                <br />
-                <label for="size">size: </label>
-                <select name="size" id="size"></select>
-              </fieldset>
-            </form>
+      <div
+        id="BasicVisualization"
+        class="tabcontent uk-section uk-section-default"
+      >
+        <div class="uk-container">
+          <!-- Dropdown Styling Block -->
+          <div class="uk-margin-small-bottom">
+            <p class="uk-text-bold uk-text-primary uk-text-large">
+              <span
+                uk-icon="icon: settings; ratio: 1.2"
+                class="uk-margin-small-right"
+              ></span>
+              Select dimensions to be displayed:
+            </p>
           </div>
-          <!-- scatterplot SVG -->
-          <div id="sp"></div>
-        </div>
 
-        <!-- radar chart -->
-        <div class="container">
-          <h2>Radar Chart</h2>
-          <!-- radar chart SVG -->
-          <div id="radar"></div>
-          <div id="legend"><b>Legend:</b><br /></div>
+          <!-- Dropdown Menu for Dimensions -->
+          <div
+            class="uk-child-width-1-4@m uk-grid-small uk-flex uk-flex-wrap"
+            uk-grid
+          >
+            <!-- X Axis -->
+            <div>
+              <label class="uk-form-label uk-text-muted" for="scatterX"
+                >X Axis</label
+              >
+              <div class="uk-inline uk-width-1-1">
+                <button
+                  class="uk-button uk-button-default uk-width-1-1"
+                  type="button"
+                  id="scatterXButton"
+                >
+                  Select X Axis
+                </button>
+
+                <div uk-dropdown="mode: click; pos: bottom-justify">
+                  <ul class="uk-nav uk-dropdown-nav" id="scatterXMenu">
+                    <!-- JS will fill in dimensions here -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Y Axis -->
+            <div>
+              <label class="uk-form-label uk-text-muted" for="scatterY"
+                >Y Axis</label
+              >
+              <div class="uk-inline uk-width-1-1">
+                <button
+                  class="uk-button uk-button-default uk-width-1-1"
+                  type="button"
+                  id="scatterYButton"
+                >
+                  Select Y Axis
+                </button>
+                <div uk-dropdown="mode: click; pos: bottom-justify">
+                  <ul class="uk-nav uk-dropdown-nav" id="scatterYMenu">
+                    <!-- JS will fill in dimensions here -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Size -->
+            <div>
+              <label class="uk-form-label uk-text-muted" for="size">Size</label>
+              <div class="uk-inline uk-width-1-1">
+                <button
+                  class="uk-button uk-button-default uk-width-1-1"
+                  type="button"
+                  id="sizeButton"
+                >
+                  Select Size
+                </button>
+                <div uk-dropdown="mode: click; pos: bottom-justify">
+                  <ul class="uk-nav uk-dropdown-nav" id="sizeMenu">
+                    <!-- JS will fill in dimensions here -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div
+            class="uk-grid-match uk-child-width-1-1@s uk-child-width-1-2@m uk-margin-top"
+            uk-grid
+          >
+            <!-- Scatterplot -->
+            <div>
+              <div
+                class="uk-card uk-card-default uk-card-body uk-overflow-auto"
+              >
+                <h3 class="uk-card-title">Scatterplot</h3>
+                <div id="sp" class="uk-margin-top"></div>
+              </div>
+            </div>
+
+            <!-- Radar Chart -->
+            <div>
+              <div
+                class="uk-card uk-card-default uk-card-body uk-overflow-auto"
+              >
+                <h3 class="uk-card-title">Radar Chart</h3>
+                <div id="radar"></div>
+                <div id="legend" class="uk-margin-top">
+                  <b>Legend:</b><br />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
