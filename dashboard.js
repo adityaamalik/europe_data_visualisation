@@ -28,8 +28,6 @@ const countryColors = d3.scaleOrdinal(d3.schemeCategory10);
  * Initialize the dashboard with cleaned data
  */
 function initDashboard(_data) {
-  console.log("🚀 Initializing EuroLife Dashboard...");
-
   // Load all three datasets
   Promise.all([
     d3.csv("Datasets - Task 2/cleaned/eurostat_life_satisfaction.csv"),
@@ -53,8 +51,6 @@ function initDashboard(_data) {
 
       // Create all visualizations
       createAllCharts();
-
-      console.log("✅ Dashboard initialized successfully!");
     })
     .catch(function (error) {
       console.error("❌ Error loading data:", error);
@@ -142,8 +138,6 @@ function findCountryMatch(geoCountryCode, dataCountries) {
  * Clean and prepare data for visualization
  */
 function prepareData() {
-  console.log("🔧 Preparing data...");
-
   // Clean and convert data types
   lifeSatisfactionData.forEach((d) => {
     d.year = +d.year;
@@ -157,32 +151,10 @@ function prepareData() {
     d.country = d.country.trim();
   });
 
-  // Debug: Log unique countries in each dataset
-  console.log("🔍 DEBUGGING COUNTRY CODES:");
-  console.log(
-    "Countries in life satisfaction data:",
-    [...new Set(lifeSatisfactionData.map((d) => d.country))].sort()
-  );
-  console.log(
-    "Countries in income data:",
-    [...new Set(incomeData.map((d) => d.country))].sort()
-  );
-
   // Check geographic data country codes
   if (geoData && geoData.features) {
     const geoCodes = geoData.features.map((f) => f.properties.id);
-    console.log(
-      "Country codes in geographic data:",
-      [...new Set(geoCodes)].sort()
-    );
   }
-
-  // Show first few rows of each dataset to understand structure
-  console.log(
-    "Sample life satisfaction data:",
-    lifeSatisfactionData.slice(0, 3)
-  );
-  console.log("Sample income data:", incomeData.slice(0, 3));
 
   // Combine datasets by country and year
   combinedData = [];
@@ -210,16 +182,6 @@ function prepareData() {
 
   // Set up scales
   setupScales();
-
-  console.log(
-    `✅ Prepared ${combinedData.length} data points for ${
-      new Set(combinedData.map((d) => d.country)).size
-    } countries`
-  );
-  console.log(
-    "Countries in combined data:",
-    [...new Set(combinedData.map((d) => d.country))].sort()
-  );
 }
 
 /**
@@ -672,23 +634,9 @@ function createChart3() {
         (cd) => cd.country === matchedCountryCode
       );
       if (countryData) {
-        // Log successful matches for debugging
-        if (geoCountryCode !== matchedCountryCode) {
-          console.log(`✅ Mapped ${geoCountryCode} → ${matchedCountryCode}`);
-        }
         return countryData;
       }
     }
-
-    // Log failed matches for debugging
-    console.log(
-      `❌ No match found for ${geoCountryCode} (${getCountryName(geoFeature)})`
-    );
-    console.log(
-      `   Available data countries:`,
-      dataCountries.slice(0, 10),
-      dataCountries.length > 10 ? "..." : ""
-    );
 
     return null;
   }
@@ -821,25 +769,6 @@ function createChart3() {
     .append("g")
     .attr("transform", `translate(0, ${legendHeight})`)
     .call(legendAxis);
-
-  // Debug: Log countries with and without data
-  console.log("Map Debug Info:");
-  console.log("Countries with data:", currentData.map((d) => d.country).sort());
-  console.log(
-    "Geographic features without data:",
-    geoData.features
-      .filter((f) => !getCountryData(f))
-      .map((f) => ({
-        name: getCountryName(f),
-        code: f.properties.id,
-      }))
-  );
-
-  // Additional debug: Show all geographic country codes
-  console.log(
-    "All geographic country codes:",
-    geoData.features.map((f) => f.properties.id).sort()
-  );
 }
 
 /**
