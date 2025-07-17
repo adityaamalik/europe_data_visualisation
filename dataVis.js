@@ -107,6 +107,19 @@ function init() {
       reader.readAsBinaryString(fileInput.files[0]);
     };
   fileInput.addEventListener("change", readFile);
+
+  // Add event listener for Reset button
+  const resetButton = document.getElementById("resetButton");
+  if (resetButton) {
+    resetButton.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      // Clear file input
+      fileInput.value = "";
+      // Clear all visualizations and data
+      clear();
+    });
+  }
 }
 
 function initVis(_data) {
@@ -253,8 +266,16 @@ function clear() {
 function CreateDataTable(_data) {
   if (!_data || !_data.length) return;
 
-  // Create table element
-  const table = dataTable.append("table").attr("class", "dataTableClass");
+  // Remove any existing table wrapper
+  dataTable.selectAll(".uk-overflow-auto").remove();
+
+  // Create a responsive wrapper div for the table
+  const wrapper = dataTable.append("div").attr("class", "uk-overflow-auto");
+
+  // Create table element with UIkit classes
+  const table = wrapper
+    .append("table")
+    .attr("class", "uk-table uk-table-striped uk-table-hover uk-table-small");
 
   // Add table header
   const thead = table.append("thead");
@@ -266,7 +287,6 @@ function CreateDataTable(_data) {
     .data(_data.columns)
     .enter()
     .append("th")
-    .attr("class", "tableHeaderClass")
     .text((d) => d);
 
   // Add table body
@@ -281,7 +301,6 @@ function CreateDataTable(_data) {
     .data((d) => _data.columns.map((key) => d[key]))
     .enter()
     .append("td")
-    .attr("class", "tableBodyClass")
     .text((d) => d);
 }
 
