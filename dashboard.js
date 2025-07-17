@@ -1,9 +1,12 @@
 /*
- * Data Visualization - EuroLife Dashboard
+ * Data Visualization - Framework
  * Copyright (C) University of Passau
- * Group 4: Aditya Malik, Aakrshan Sharma
+ *   Faculty of Computer Science and Mathematics
+ *   Chair of Cognitive sensor systems
+ * Maintenance:
+ *   2025, Alexander Gall <alexander.gall@uni-passau.de>
  *
- * EuroLife Dashboard - Visualizing Well-Being Across Europe
+ * All rights reserved.
  */
 
 // Global variables for dashboard

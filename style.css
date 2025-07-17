@@ -144,3 +144,9 @@ div.tooltip {
     pointer-events: none;
     font-size: .7rem;
 }
+
+.uk-tab > li > a {
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 16px;
+  }

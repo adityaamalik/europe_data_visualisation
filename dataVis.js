@@ -95,9 +95,6 @@ function init() {
 
       let reader = new FileReader();
       reader.onloadend = function () {
-        console.log("data loaded: ");
-        console.log(reader.result);
-
         // Parse the CSV data
         globalData = d3.csvParse(reader.result);
 
@@ -503,12 +500,6 @@ function renderRadarChart() {
   // Update legend (use first column as label if available)
   const labelKey = firstColumnName;
 
-  // Debug: log the columns and labelKey
-  console.log("Global data columns:", globalData.columns);
-  console.log("First column name:", firstColumnName);
-  console.log("Label key:", labelKey);
-  console.log("Sample data point:", dataToShow[0]);
-
   legend
     .selectAll(".legend-item")
     .data(dataToShow)
@@ -521,9 +512,7 @@ function renderRadarChart() {
     .style("cursor", "pointer")
     .html((d, i) => {
       const label = d[labelKey] || `Item ${i + 1}`;
-      console.log(
-        `Legend item ${i}: labelKey="${labelKey}", value="${d[labelKey]}", final label="${label}"`
-      );
+
       return `<span style=\"color:${color(i)}; margin-right: 5px;\">■</span> 
               <span style=\"flex-grow: 1;\">${label}</span>
               <span class=\"remove-point\" style=\"color: red; font-weight: bold; font-size: 16px; margin-left: 5px; cursor: pointer; text-shadow: 1px 1px 1px white, -1px -1px 1px white, 1px -1px 1px white, -1px 1px 1px white;\">✕</span>`;
@@ -640,16 +629,23 @@ function readMenu(id) {
 }
 
 // switches and displays the tabs
-function openPage(pageName, elmnt, color) {
-  var i, tabcontent, tablinks;
-  tabcontent = document.getElementsByClassName("tabcontent");
-  for (i = 0; i < tabcontent.length; i++) {
-    tabcontent[i].style.display = "none";
-  }
-  tablinks = document.getElementsByClassName("tablink");
-  for (i = 0; i < tablinks.length; i++) {
-    tablinks[i].style.backgroundColor = "";
+function openPage(pageName, elm) {
+  // Show the selected page (you already have this part likely)
+  const tabPages = document.getElementsByClassName("tabcontent");
+  for (let i = 0; i < tabPages.length; i++) {
+    tabPages[i].style.display = "none";
   }
   document.getElementById(pageName).style.display = "block";
-  elmnt.style.backgroundColor = color;
+
+  // Remove 'uk-active' from all tabs
+  const allTabs = document.querySelectorAll(".uk-tab li");
+  allTabs.forEach((tab) => tab.classList.remove("uk-active"));
+
+  // Add 'uk-active' to the clicked tab
+  elm.parentElement.classList.add("uk-active");
 }
+
+// Optional: open default tab on load
+window.onload = function () {
+  document.querySelector(".uk-tab li a").click();
+};
