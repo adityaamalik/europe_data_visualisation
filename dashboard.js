@@ -244,46 +244,70 @@ function initializeCharts() {
   scatterplotChart = d3
     .select("#chart1")
     .append("svg")
-    .attr("width", chartWidth + dashboardMargin.left + dashboardMargin.right)
-    .attr("height", chartHeight + dashboardMargin.top + dashboardMargin.bottom)
+    .attr(
+      "viewBox",
+      `0 0 ${chartWidth + dashboardMargin.left + dashboardMargin.right} ${
+        chartHeight + dashboardMargin.top + dashboardMargin.bottom
+      }`
+    )
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .classed("responsive-svg", true)
     .append("g")
     .attr(
       "transform",
       `translate(${dashboardMargin.left},${dashboardMargin.top})`
     );
 
-  // Chart 2: Radar Chart (Multi-dimensional comparison)
+  // Chart 2: Radar Chart
   radarChart = d3
     .select("#chart2")
     .append("svg")
-    .attr("width", chartWidth + dashboardMargin.left + dashboardMargin.right)
-    .attr("height", chartHeight + dashboardMargin.top + dashboardMargin.bottom)
+    .attr(
+      "viewBox",
+      `0 0 ${chartWidth + dashboardMargin.left + dashboardMargin.right} ${
+        chartHeight + dashboardMargin.top + dashboardMargin.bottom
+      }`
+    )
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .classed("responsive-svg", true)
     .append("g")
     .attr(
       "transform",
       `translate(${
         (chartWidth + dashboardMargin.left + dashboardMargin.right) / 2
-      },${(chartHeight + dashboardMargin.top + dashboardMargin.bottom) / 2})`
+      }, ${(chartHeight + dashboardMargin.top + dashboardMargin.bottom) / 2})`
     );
 
-  // Chart 3: Choropleth Map (Geographic distribution)
+  // Chart 3: Choropleth Map
   mapChart = d3
     .select("#chart3")
     .append("svg")
-    .attr("width", chartWidth + dashboardMargin.left + dashboardMargin.right)
-    .attr("height", chartHeight + dashboardMargin.top + dashboardMargin.bottom)
+    .attr(
+      "viewBox",
+      `0 0 ${chartWidth + dashboardMargin.left + dashboardMargin.right} ${
+        chartHeight + dashboardMargin.top + dashboardMargin.bottom
+      }`
+    )
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .classed("responsive-svg", true)
     .append("g")
     .attr(
       "transform",
       `translate(${dashboardMargin.left},${dashboardMargin.top})`
     );
 
-  // Chart 4: Line Chart (Time trends)
+  // Chart 4: Line Chart
   lineChart = d3
     .select("#chart4")
     .append("svg")
-    .attr("width", chartWidth + dashboardMargin.left + dashboardMargin.right)
-    .attr("height", chartHeight + dashboardMargin.top + dashboardMargin.bottom)
+    .attr(
+      "viewBox",
+      `0 0 ${chartWidth + dashboardMargin.left + dashboardMargin.right} ${
+        chartHeight + dashboardMargin.top + dashboardMargin.bottom
+      }`
+    )
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .classed("responsive-svg", true)
     .append("g")
     .attr(
       "transform",
@@ -298,41 +322,41 @@ function createControls() {
   // Year selector
   const years = [...new Set(combinedData.map((d) => d.year))].sort();
 
-  // Add year selector to first chart container
-  const controlDiv = d3
-    .select("#chart1")
-    .insert("div", "svg")
-    .attr("class", "controls")
-    .style("margin-bottom", "10px");
-
-  controlDiv.append("label").text("Year: ").style("margin-right", "5px");
-
-  const yearSelect = controlDiv
-    .append("select")
-    .attr("id", "yearSelector")
-    .on("change", function () {
-      selectedYear = +this.value;
-      updateAllCharts();
+  // New: Render year selector outside the dashboard grid
+  function renderYearSelector(years, onSelect) {
+    const container = document.getElementById("yearSelectorContainer");
+    container.innerHTML = `
+      <div class="uk-inline" style="margin-right: 16px;">
+        <button class="uk-button uk-button-default" type="button" id="yearButton">Select Year</button>
+        <div uk-dropdown="mode: click; pos: bottom-justify">
+          <ul class="uk-nav uk-dropdown-nav" id="yearMenu"></ul>
+        </div>
+      </div>
+      <button class="uk-button uk-button-danger" id="clearSelectionButton" style="margin-left: 8px;">Clear Selection</button>
+    `;
+    const menu = document.getElementById("yearMenu");
+    years.forEach((year) => {
+      const li = document.createElement("li");
+      li.className = "uk-nav-item";
+      li.textContent = year;
+      li.style.cursor = "pointer";
+      li.onclick = function () {
+        document.getElementById("yearButton").textContent = year;
+        selectedYear = +year;
+        onSelect(year);
+      };
+      menu.appendChild(li);
     });
-
-  yearSelect
-    .selectAll("option")
-    .data(years)
-    .enter()
-    .append("option")
-    .attr("value", (d) => d)
-    .text((d) => d)
-    .property("selected", (d) => d === selectedYear);
-
-  // Clear selection button
-  controlDiv
-    .append("button")
-    .text("Clear Selection")
-    .style("margin-left", "10px")
-    .on("click", function () {
+    // Clear selection button logic
+    document.getElementById("clearSelectionButton").onclick = function () {
       selectedCountries.clear();
       updateAllCharts();
-    });
+    };
+  }
+
+  renderYearSelector(years, function (selectedYear) {
+    updateAllCharts();
+  });
 }
 
 /**
