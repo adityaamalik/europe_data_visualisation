@@ -41,13 +41,15 @@ The EuroLife Dashboard explores quality of life across European countries throug
 
 Below is a screenshot of the EuroLife Dashboard in action:
 
-![EuroLife Dashboard Screenshot](group4\_ screenshot_part2.png)
+![EuroLife Dashboard Screenshot](group4_%20screenshot_part2.png)
 
 ## Project Video Demo
 
 Below is a video demonstration of the EuroLife Dashboard in action:
 
-<video src="group4_ video_part2.mp4" controls width="600"></video>
+[📹 **Watch Demo Video**](group4_%20video_part2.mp4)
+
+*Click the link above to download and view the project demonstration video.*
 
 ## Datasets
 
