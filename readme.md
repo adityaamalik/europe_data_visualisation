@@ -1,5 +1,7 @@
 # EuroLife Dashboard - Visualizing Well-Being Across Europe
 
+## Live demo : https://group4datavis.netlify.app/
+
 **Group 4:** Aditya Malik, Aakrshan Sharma  
 **Course:** 6171 UE Exercise: Data Visualization (SoSe 25)
 
